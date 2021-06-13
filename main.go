@@ -13,8 +13,8 @@ const (
 	posY   = -1.2
 	height = 2.5
 
-	imgWidth  = 1024
-	imgHeight = 1024
+	imgWidth  = 10
+	imgHeight = 10
 	maxIter   = 3000
 	samples   = 200
 
@@ -36,13 +36,21 @@ func main() {
 
 	render()
 
-	log.Printf("Opening window size: [%v,%v]\n", imgWidth, imgHeight)
-
-	if err := ebiten.Run(update, imgWidth, imgHeight, 1, "Test PAD"); err != nil {
-		log.Println(err)
+	closedWindow := make(chan bool)
+	startWindow(closedWindow)
+	if <-closedWindow {
+		log.Println("Done!")
 	}
+}
 
-	log.Println("Done!")
+func startWindow(closedWindow chan bool) {
+	go func(closedWindow chan bool) {
+		log.Printf("Opening window size: [%v,%v]\n", imgWidth, imgHeight)
+		if err := ebiten.Run(update, imgWidth, imgHeight, 1, "Test PAD"); err != nil {
+			log.Println(err)
+		}
+		closedWindow <- true
+	}(closedWindow)
 }
 
 func render() {
