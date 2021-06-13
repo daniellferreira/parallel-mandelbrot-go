@@ -4,7 +4,7 @@ import (
 	"image"
 	"image/color"
 	"log"
-
+	"fmt"
 	"github.com/hajimehoshi/ebiten"
 )
 
@@ -28,13 +28,31 @@ func update(screen *ebiten.Image) error {
 	return nil
 }
 
+type colorRGBA struct {
+	R uint8
+	G uint8
+	B uint8
+	A uint8
+}
+
+type PixelData struct {
+	x int
+	y int
+	colorRGBA
+}
+
+
 func main() {
+	printer := make(chan PixelData)
 	log.Println("Initial processing...")
 	img = image.NewRGBA(image.Rect(0, 0, imgWidth, imgHeight))
 
 	log.Println("Rendering...")
 
-	render()
+	render(printer)
+
+	// TODO: ter uma thread pra printar na tela que escute as outras threads que fazem a computação
+	go draw(printer)
 
 	log.Printf("Opening window size: [%v,%v]\n", imgWidth, imgHeight)
 
@@ -45,10 +63,18 @@ func main() {
 	log.Println("Done!")
 }
 
-func render() {
+func draw(printer chan PixelData){
+	// for i := range printer {
+		// fmt.Println(i.colorRGBA)
+	// 	img.SetRGBA(i.x, i.y, color.RGBA(i.colorRGBA))
+	// }
+	// close(printer)
+}
+
+func render(printer chan PixelData) {
 	for x := 0; x < imgWidth; x++ {
 		// para cada coluna: 1 go routine (thread - eu acho que o go se gerencia para nao rodar mais threads do que o SO permite)
-		go func(x int) {
+		go func(x int, printer chan PixelData) {
 			// para cada ponto x,y processa a cor pelo mandelbrot
 			for y := 0; y < imgHeight; y++ {
 				var colorR, colorG, colorB int
@@ -66,9 +92,11 @@ func render() {
 				cb = uint8(float64(colorB) / float64(samples))
 
 				// desenha o pixel processado na imagem
+				// TODO: fazer isso n bloquear o print na tela, só um teste por enquanto
+				printer <- PixelData{x, y, colorRGBA{cr, cg, cb, 255}}
 				img.SetRGBA(x, y, color.RGBA{R: cr, G: cg, B: cb, A: 255})
 			}
-		}(x)
+		}(x, printer)
 	}
 }
 
